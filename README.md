@@ -6,3 +6,4 @@ This repository contains my ECEN/AESD Final Project Proposal.
 https://github.com/cu-ecen-aeld/final-project-aava7378/wiki/Project-Overview
 
 ## Schedule Page
+https://github.com/cu-ecen-aeld/final-project-aava7378/wiki/Schedule
