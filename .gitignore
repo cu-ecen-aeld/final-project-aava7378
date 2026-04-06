@@ -1,0 +1,25 @@
+# STM32 build output
+Debug/
+Release/
+build/
+*.o
+*.d
+*.su
+*.elf
+*.map
+*.a
+*.bin
+*.hex
+*.lst
+
+# STM32CubeIDE metadata
+.metadata/
+.settings/
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+telemetry_log.csv
