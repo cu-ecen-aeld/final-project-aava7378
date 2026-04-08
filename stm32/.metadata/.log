@@ -26,3 +26,107 @@ Command-line arguments:  -os win32 -ws win32 -arch x86_64
 
 !ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-05 19:10:58.732
 !MESSAGE Project is null
+!SESSION 2026-04-07 21:39:47.671 -----------------------------------------------
+eclipse.buildId=Version 1.19.0
+java.version=21.0.3
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=en_US
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2026-04-07 21:39:57.520
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2026-04-07 21:39:57.521
+!MESSAGE Log4j2 initialized with config file C:\Users\aaron\final-project-aava7378\stm32\.metadata\.log4j2.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2026-04-07 21:40:03.580
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.equinox.p2.transport.ecf 2 0 2026-04-07 21:42:19.597
+!MESSAGE Connection to https://download.eclipse.org/tools/cdt/releases/latest/p2.index failed on null. Retry attempt 0 started
+!STACK 0
+java.net.ConnectException
+	at java.net.http/jdk.internal.net.http.common.Utils.toConnectException(Utils.java:1028)
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.connectAsync(PlainHttpConnection.java:227)
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.checkRetryConnect(PlainHttpConnection.java:280)
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.lambda$connectAsync$2(PlainHttpConnection.java:238)
+	at java.base/java.util.concurrent.CompletableFuture.uniHandle(CompletableFuture.java:934)
+	at java.base/java.util.concurrent.CompletableFuture$UniHandle.tryFire(CompletableFuture.java:911)
+	at java.base/java.util.concurrent.CompletableFuture.postComplete(CompletableFuture.java:510)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1773)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: java.nio.channels.ClosedChannelException
+	at java.base/sun.nio.ch.SocketChannelImpl.ensureOpen(SocketChannelImpl.java:202)
+	at java.base/sun.nio.ch.SocketChannelImpl.beginConnect(SocketChannelImpl.java:786)
+	at java.base/sun.nio.ch.SocketChannelImpl.connect(SocketChannelImpl.java:874)
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.lambda$connectAsync$1(PlainHttpConnection.java:210)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:571)
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.connectAsync(PlainHttpConnection.java:212)
+	... 9 more
+!SESSION 2026-04-08 11:14:39.607 -----------------------------------------------
+eclipse.buildId=Version 1.19.0
+java.version=21.0.3
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=en_US
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2026-04-08 11:14:55.647
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2026-04-08 11:14:55.650
+!MESSAGE Log4j2 initialized with config file C:\Users\aaron\final-project-aava7378\stm32\.metadata\.log4j2.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2026-04-08 11:15:12.138
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-08 11:33:54.713
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-08 11:33:54.713
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-08 11:33:54.713
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-08 11:33:54.714
+!MESSAGE Project is null
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-08 11:37:06.767
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-08 11:37:06.767
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-08 11:37:06.767
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-08 11:37:06.767
+!MESSAGE Project is null
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-08 11:37:16.221
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-08 11:37:16.221
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-08 11:37:16.221
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-08 11:37:16.222
+!MESSAGE Project is null
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-08 11:48:26.906
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-08 11:48:26.906
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-08 11:48:26.906
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-08 11:48:26.907
+!MESSAGE Project is null
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-08 11:51:11.959
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-08 11:51:11.959
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-08 11:51:11.959
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-08 11:51:11.960
+!MESSAGE Project is null

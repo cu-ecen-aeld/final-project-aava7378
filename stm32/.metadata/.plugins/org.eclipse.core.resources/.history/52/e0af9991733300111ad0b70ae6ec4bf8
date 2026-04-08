@@ -41,10 +41,11 @@
 #define VREF                     3.3f
 #define ADC_MAX                  4095.0f
 
-// PWM and telemetry timing
+// #define VOLTAGE_GAIN             1.0f
+
+/* PWM and telemetry timing */
 #define PWM_FREQ_HZ              1000U
 #define TELEMETRY_PERIOD_MS      100U
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/

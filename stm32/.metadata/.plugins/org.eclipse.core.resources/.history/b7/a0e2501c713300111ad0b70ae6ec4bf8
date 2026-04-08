@@ -3,11 +3,6 @@
   ******************************************************************************
   * @file           : main.c
   * @brief          : Main program body
-  *
-  * This firmware reads a potentiometer using the ADC and uses the potentiometer
-  * position to control the PWM duty cycle driving a fan. It also sends
-  * telemetry over UART so the host can monitor voltage, potentiometer position,
-  * and PWM output in real time.
   ******************************************************************************
   * @attention
   *
@@ -21,7 +16,6 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
@@ -41,10 +35,12 @@
 #define VREF                     3.3f
 #define ADC_MAX                  4095.0f
 
-// PWM and telemetry timing
+#define VOLTAGE_GAIN             1.0f
+#define CURRENT_OFFSET_V         0.0f
+#define CURRENT_SENSITIVITY_VPA  1.0f
+
 #define PWM_FREQ_HZ              1000U
 #define TELEMETRY_PERIOD_MS      100U
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -53,15 +49,15 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;   // ADC for analog measurements
+ADC_HandleTypeDef hadc1;
 
-TIM_HandleTypeDef htim3;   // Timer used for PWM generation
+TIM_HandleTypeDef htim3;
 
-UART_HandleTypeDef huart1; // UART used for telemetry output
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-static char uart_msg[160];
-static float pwm_pct = 0.0f;
+static char uart_msg[128];
+static float pwm_pct = 50.0f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,35 +66,21 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
-
 /* USER CODE BEGIN PFP */
-
-// helpers functions
 static uint32_t read_adc_channel(uint32_t channel);
 static float adc_to_volts(uint32_t raw);
 static float read_voltage_v(void);
-static float read_pot_voltage_v(void);
-static float read_pot_percent(void);
+static float read_current_a(void);
 static void set_pwm_percent(float pct);
 static void uart_send_line(const char *s);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-/**
-  * @brief Reads one ADC channel using polling.
-  * @param channel ADC channel to read.
-  * @retval Raw 12-bit ADC value (0 to 4095).
-  * This helper reconfigures ADC1 each time so the same ADC can read
-  * multiple analog inputs one at a time.
-  */
 static uint32_t read_adc_channel(uint32_t channel)
 {
     ADC_ChannelConfTypeDef sConfig = {0};
 
-    // Select which ADC channel to sample
     sConfig.Channel = channel;
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_71CYCLES_5;
@@ -108,22 +90,18 @@ static uint32_t read_adc_channel(uint32_t channel)
         Error_Handler();
     }
 
-    // Start conversion
     if (HAL_ADC_Start(&hadc1) != HAL_OK)
     {
         Error_Handler();
     }
 
-    // Wait until the conversion finishes
     if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) != HAL_OK)
     {
         Error_Handler();
     }
 
-    // Read the conversion result
     uint32_t raw = HAL_ADC_GetValue(&hadc1);
 
-    // Stop ADC after the one-shot conversion
     if (HAL_ADC_Stop(&hadc1) != HAL_OK)
     {
         Error_Handler();
@@ -132,68 +110,25 @@ static uint32_t read_adc_channel(uint32_t channel)
     return raw;
 }
 
-/**
-  * @brief Converts a raw ADC count into volts.
-  * @param raw 12-bit ADC result.
-  * @retval Voltage at the ADC pin.
-  *
-  * Formula:
-  * volts = raw * VREF / ADC_MAX
-  */
 static float adc_to_volts(uint32_t raw)
 {
     return ((float)raw * VREF) / ADC_MAX;
 }
 
-// Reads a voltage on ADC channel 0.
-// Voltage in volts.
 static float read_voltage_v(void)
 {
     uint32_t raw = read_adc_channel(ADC_CHANNEL_0);
     float adc_v = adc_to_volts(raw);
-    return adc_v;
+    return adc_v * VOLTAGE_GAIN;
 }
 
-/**
-  * @brief Reads potentiometer wiper voltage from ADC channel 1.
-  * @retval Potentiometer voltage in volts.
-  */
-static float read_pot_voltage_v(void)
+static float read_current_a(void)
 {
     uint32_t raw = read_adc_channel(ADC_CHANNEL_1);
-    return adc_to_volts(raw);
+    float adc_v = adc_to_volts(raw);
+    return (adc_v - CURRENT_OFFSET_V) / CURRENT_SENSITIVITY_VPA;
 }
 
-/**
-  * @brief Converts potentiometer voltage into 0 to 100 percent.
-  * @retval Potentiometer position as a percentage.
-  * 0 V   -> 0%
-  * 3.3 V -> 100%
-  */
-static float read_pot_percent(void)
-{
-    float pot_v = read_pot_voltage_v();
-    float pct = (pot_v / VREF) * 100.0f;
-
-    // Clamp result for safety
-    if (pct < 0.0f)
-    {
-        pct = 0.0f;
-    }
-    if (pct > 100.0f)
-    {
-        pct = 100.0f;
-    }
-
-    return pct;
-}
-
-/**
-  * @brief Sets PWM duty cycle as a percentage.
-  * @param pct Duty cycle from 0 to 100.
-  * This converts a percent into the timer compare value
-  * used by the STM32 PWM hardware.
-  */
 static void set_pwm_percent(float pct)
 {
     if (pct < 0.0f)
@@ -205,24 +140,12 @@ static void set_pwm_percent(float pct)
         pct = 100.0f;
     }
 
-    // Save current PWM percentage so telemetry reports the same value
-    pwm_pct = pct;
-
-    // ARR determines the PWM period
     uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim3);
-
-    // Convert percent into compare value
     uint32_t compare = (uint32_t)((pct / 100.0f) * (float)(arr + 1U));
 
-    // Update timer compare register
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, compare);
 }
 
-/**
-  * @brief Sends a text line over UART.
-  * UART is used here for simple CSV telemetry output that can be parsed by
-  * Pi 4.
-  */
 static void uart_send_line(const char *s)
 {
     if (HAL_UART_Transmit(&huart1, (uint8_t *)s, strlen(s), HAL_MAX_DELAY) != HAL_OK)
@@ -231,23 +154,32 @@ static void uart_send_line(const char *s)
     }
 }
 /* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset all peripherals and initialize HAL */
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -255,21 +187,17 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM3_Init();
   MX_USART1_UART_Init();
-
   /* USER CODE BEGIN 2 */
 
-  // Start PWM output
   if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
   {
       Error_Handler();
   }
 
-  // Start fan at 0% until potentiometer is read
-  set_pwm_percent(0.0f);
+  set_pwm_percent(pwm_pct);
 
-  // Send startup text and CSV header
-  uart_send_line("STM32 fan control telemetry start\r\n");
-  uart_send_line("t_s,voltage_v,pot_voltage_v,pot_percent,pwm_pct,pwm_freq_hz\r\n");
+  uart_send_line("# STM32 telemetry start\r\n");
+  uart_send_line("t_s,voltage_v,current_a,pwm_pct,pwm_freq_hz\r\n");
 
   /* USER CODE END 2 */
 
@@ -277,33 +205,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // Time since boot in seconds
     float t_s = HAL_GetTick() / 1000.0f;
-
-    // Read adc measurements */
     float voltage_v = read_voltage_v();
-    float pot_voltage_v = read_pot_voltage_v();
-    float pot_percent = read_pot_percent();
+    float current_a = read_current_a();
 
-//      Fan control behavior:
-//      The potentiometer directly controls PWM duty cycle.
-//      More potentiometer voltage means higher PWM duty cycle means faster fan.
-    set_pwm_percent(pot_percent);
-
-    // Format telemetry as CSV
     snprintf(uart_msg, sizeof(uart_msg),
-             "%.3f,%.3f,%.3f,%.1f,%.1f,%lu\r\n",
+             "%.3f,%.3f,%.3f,%.1f,%lu\r\n",
              t_s,
              voltage_v,
-             pot_voltage_v,
-             pot_percent,
+             current_a,
              pwm_pct,
              (unsigned long)PWM_FREQ_HZ);
 
-    // Send telemetry line
     uart_send_line(uart_msg);
 
-    // Update every 100 ms
     HAL_Delay(TELEMETRY_PERIOD_MS);
 
     /* USER CODE END WHILE */
@@ -313,6 +228,10 @@ int main(void)
   /* USER CODE END 3 */
 }
 
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -331,7 +250,8 @@ void SystemClock_Config(void)
     Error_Handler();
   }
 
-  /* Set AHB/APB clocks */
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
@@ -343,8 +263,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-
-  /* ADC clock divider */
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
   PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -357,13 +275,22 @@ void SystemClock_Config(void)
   * @brief ADC1 Initialization Function
   * @param None
   * @retval None
-  * ADC is configured in single-conversion mode because this application
-  * reads one channel at a time using software control.
   */
 static void MX_ADC1_Init(void)
 {
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
   ADC_ChannelConfTypeDef sConfig = {0};
 
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -376,10 +303,8 @@ static void MX_ADC1_Init(void)
     Error_Handler();
   }
 
-  /*
-   * Initial channel configuration.
-   * The actual channel used at runtime is selected in read_adc_channel().
-   */
+  /** Configure Regular Channel
+  */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
@@ -387,23 +312,30 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
-  * Prescaler = 71 and Period = 999 produce a PWM frequency of 1 kHz
-  * when the timer input clock is 72 MHz:
-  *
-  * timer_tick = 72 MHz / (71 + 1) = 1 MHz
-  * PWM freq   = 1 MHz / (999 + 1) = 1000 Hz
   */
 static void MX_TIM3_Init(void)
 {
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
 
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 71;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -414,14 +346,12 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
-
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
@@ -430,18 +360,28 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN TIM3_Init 2 */
 
+  /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
+
 }
 
 /**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
-  * UART is configured as 115200 8N1 for simple text-based telemetry output.
   */
 static void MX_USART1_UART_Init(void)
 {
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
   huart1.Init.BaudRate = 115200;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
@@ -454,18 +394,23 @@ static void MX_USART1_UART_Init(void)
   {
     Error_Handler();
   }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
 }
 
 /**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
-  * This enables the GPIO ports and configures the board LED, button,
-  * and UART pins. The PWM pin is configured later by HAL_TIM_MspPostInit().
   */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -473,31 +418,35 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /* Configure LED default state */
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
-  /* Configure push button */
+  /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /* Configure UART pins */
-  GPIO_InitStruct.Pin = USART_TX_Pin | USART_RX_Pin;
+  /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
+  GPIO_InitStruct.Pin = USART_TX_Pin|USART_RX_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /* Configure LED pin */
+  /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-  /* EXTI interrupt init */
+  /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -506,28 +455,30 @@ static void MX_GPIO_Init(void)
 
 /**
   * @brief  This function is executed in case of error occurrence.
-  * If any critical HAL call fails, the firmware disables interrupts and
-  * stays here so the failure is obvious and the system does not continue
-  * in an invalid state.
+  * @retval None
   */
 void Error_Handler(void)
 {
+  /* USER CODE BEGIN Error_Handler_Debug */
   __disable_irq();
   while (1)
   {
   }
+  /* USER CODE END Error_Handler_Debug */
 }
-
 #ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
-  * @param  file Pointer to source file name
-  * @param  line assert_param error line source number
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  /* User can add debug print here if desired */
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

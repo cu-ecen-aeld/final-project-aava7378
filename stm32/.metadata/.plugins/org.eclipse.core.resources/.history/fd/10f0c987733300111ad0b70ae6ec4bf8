@@ -41,10 +41,12 @@
 #define VREF                     3.3f
 #define ADC_MAX                  4095.0f
 
-// PWM and telemetry timing
+/* Channel 0 can still be used to read another voltage in the system */
+#define VOLTAGE_GAIN             1.0f
+
+/* PWM and telemetry timing */
 #define PWM_FREQ_HZ              1000U
 #define TELEMETRY_PERIOD_MS      100U
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -151,7 +153,7 @@ static float read_voltage_v(void)
 {
     uint32_t raw = read_adc_channel(ADC_CHANNEL_0);
     float adc_v = adc_to_volts(raw);
-    return adc_v;
+    return adc_v * VOLTAGE_GAIN;
 }
 
 /**

@@ -41,10 +41,12 @@
 #define VREF                     3.3f
 #define ADC_MAX                  4095.0f
 
-// PWM and telemetry timing
+/* Channel 0 can still be used to read another voltage in the system */
+#define VOLTAGE_GAIN             1.0f
+
+/* PWM and telemetry timing */
 #define PWM_FREQ_HZ              1000U
 #define TELEMETRY_PERIOD_MS      100U
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -91,6 +93,8 @@ static void uart_send_line(const char *s);
   * @brief Reads one ADC channel using polling.
   * @param channel ADC channel to read.
   * @retval Raw 12-bit ADC value (0 to 4095).
+  *
+  * Code review note:
   * This helper reconfigures ADC1 each time so the same ADC can read
   * multiple analog inputs one at a time.
   */
@@ -98,7 +102,7 @@ static uint32_t read_adc_channel(uint32_t channel)
 {
     ADC_ChannelConfTypeDef sConfig = {0};
 
-    // Select which ADC channel to sample
+    /* Select which ADC channel to sample */
     sConfig.Channel = channel;
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_71CYCLES_5;
@@ -145,18 +149,24 @@ static float adc_to_volts(uint32_t raw)
     return ((float)raw * VREF) / ADC_MAX;
 }
 
-// Reads a voltage on ADC channel 0.
-// Voltage in volts.
-static float read_voltage_v(void)
-{
-    uint32_t raw = read_adc_channel(ADC_CHANNEL_0);
-    float adc_v = adc_to_volts(raw);
-    return adc_v;
-}
+///**
+//  * @brief Reads a voltage on ADC channel 0.
+//  * @retval Voltage in volts.
+//  */
+//static float read_voltage_v(void)
+//{
+//    uint32_t raw = read_adc_channel(ADC_CHANNEL_0);
+//    float adc_v = adc_to_volts(raw);
+//    return adc_v * VOLTAGE_GAIN;
+//}
 
 /**
   * @brief Reads potentiometer wiper voltage from ADC channel 1.
   * @retval Potentiometer voltage in volts.
+  *
+  * Code review note:
+  * A potentiometer is a voltage divider, so the correct quantity to read is
+  * voltage, not current.
   */
 static float read_pot_voltage_v(void)
 {
@@ -167,6 +177,9 @@ static float read_pot_voltage_v(void)
 /**
   * @brief Converts potentiometer voltage into 0 to 100 percent.
   * @retval Potentiometer position as a percentage.
+  *
+  * Code review note:
+  * If the potentiometer is wired between 0 V and 3.3 V, then:
   * 0 V   -> 0%
   * 3.3 V -> 100%
   */
@@ -175,7 +188,7 @@ static float read_pot_percent(void)
     float pot_v = read_pot_voltage_v();
     float pct = (pot_v / VREF) * 100.0f;
 
-    // Clamp result for safety
+    /* Clamp result for safety */
     if (pct < 0.0f)
     {
         pct = 0.0f;
@@ -191,7 +204,9 @@ static float read_pot_percent(void)
 /**
   * @brief Sets PWM duty cycle as a percentage.
   * @param pct Duty cycle from 0 to 100.
-  * This converts a percent into the timer compare value
+  *
+  * Code review note:
+  * This converts a user-friendly percent into the timer compare value
   * used by the STM32 PWM hardware.
   */
 static void set_pwm_percent(float pct)
@@ -205,23 +220,26 @@ static void set_pwm_percent(float pct)
         pct = 100.0f;
     }
 
-    // Save current PWM percentage so telemetry reports the same value
+    /* Save current PWM percentage so telemetry reports the same value */
     pwm_pct = pct;
 
-    // ARR determines the PWM period
+    /* ARR determines the PWM period */
     uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim3);
 
-    // Convert percent into compare value
+    /* Convert percent into compare value */
     uint32_t compare = (uint32_t)((pct / 100.0f) * (float)(arr + 1U));
 
-    // Update timer compare register
+    /* Update timer compare register */
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, compare);
 }
 
 /**
   * @brief Sends a text line over UART.
+  * @param s Null-terminated string to send.
+  *
+  * Code review note:
   * UART is used here for simple CSV telemetry output that can be parsed by
-  * Pi 4.
+  * a PC or Raspberry Pi.
   */
 static void uart_send_line(const char *s)
 {
@@ -231,6 +249,11 @@ static void uart_send_line(const char *s)
     }
 }
 /* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -258,17 +281,17 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-  // Start PWM output
+  /* Start PWM output */
   if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
   {
       Error_Handler();
   }
 
-  // Start fan at 0% until potentiometer is read
+  /* Start fan at 0% until potentiometer is read */
   set_pwm_percent(0.0f);
 
-  // Send startup text and CSV header
-  uart_send_line("STM32 fan control telemetry start\r\n");
+  /* Send startup text and CSV header */
+  uart_send_line("# STM32 fan control telemetry start\r\n");
   uart_send_line("t_s,voltage_v,pot_voltage_v,pot_percent,pwm_pct,pwm_freq_hz\r\n");
 
   /* USER CODE END 2 */
@@ -277,20 +300,22 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // Time since boot in seconds
+    /* Time since boot in seconds */
     float t_s = HAL_GetTick() / 1000.0f;
 
-    // Read adc measurements */
+    /* Read analog measurements */
     float voltage_v = read_voltage_v();
     float pot_voltage_v = read_pot_voltage_v();
     float pot_percent = read_pot_percent();
 
-//      Fan control behavior:
-//      The potentiometer directly controls PWM duty cycle.
-//      More potentiometer voltage means higher PWM duty cycle means faster fan.
+    /*
+     * Fan control behavior:
+     * The potentiometer directly controls PWM duty cycle.
+     * More potentiometer voltage -> higher PWM duty cycle -> faster fan.
+     */
     set_pwm_percent(pot_percent);
 
-    // Format telemetry as CSV
+    /* Format telemetry as CSV */
     snprintf(uart_msg, sizeof(uart_msg),
              "%.3f,%.3f,%.3f,%.1f,%.1f,%lu\r\n",
              t_s,
@@ -300,10 +325,10 @@ int main(void)
              pwm_pct,
              (unsigned long)PWM_FREQ_HZ);
 
-    // Send telemetry line
+    /* Send telemetry line */
     uart_send_line(uart_msg);
 
-    // Update every 100 ms
+    /* Update every 100 ms */
     HAL_Delay(TELEMETRY_PERIOD_MS);
 
     /* USER CODE END WHILE */
@@ -313,6 +338,14 @@ int main(void)
   /* USER CODE END 3 */
 }
 
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  *
+  * Code review note:
+  * This configures the STM32F103 system clock to run from the PLL.
+  * With an 8 MHz HSE source and PLL x9, SYSCLK becomes 72 MHz.
+  */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -357,6 +390,8 @@ void SystemClock_Config(void)
   * @brief ADC1 Initialization Function
   * @param None
   * @retval None
+  *
+  * Code review note:
   * ADC is configured in single-conversion mode because this application
   * reads one channel at a time using software control.
   */
@@ -393,6 +428,8 @@ static void MX_ADC1_Init(void)
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
+  *
+  * Code review note:
   * Prescaler = 71 and Period = 999 produce a PWM frequency of 1 kHz
   * when the timer input clock is 72 MHz:
   *
@@ -438,6 +475,8 @@ static void MX_TIM3_Init(void)
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
+  *
+  * Code review note:
   * UART is configured as 115200 8N1 for simple text-based telemetry output.
   */
 static void MX_USART1_UART_Init(void)
@@ -460,6 +499,8 @@ static void MX_USART1_UART_Init(void)
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
+  *
+  * Code review note:
   * This enables the GPIO ports and configures the board LED, button,
   * and UART pins. The PWM pin is configured later by HAL_TIM_MspPostInit().
   */
@@ -506,6 +547,9 @@ static void MX_GPIO_Init(void)
 
 /**
   * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  *
+  * Code review note:
   * If any critical HAL call fails, the firmware disables interrupts and
   * stays here so the failure is obvious and the system does not continue
   * in an invalid state.
