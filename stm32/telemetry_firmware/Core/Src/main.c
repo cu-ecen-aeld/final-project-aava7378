@@ -268,7 +268,7 @@ int main(void)
   set_pwm_percent(0.0f);
 
   // Send startup text and CSV header
-  uart_send_line("STM32 fan control telemetry start\r\n");
+  uart_send_line("# STM32 fan control telemetry start\r\n");
   uart_send_line("t_s,voltage_v,pot_voltage_v,pot_percent,pwm_pct,pwm_freq_hz\r\n");
 
   /* USER CODE END 2 */

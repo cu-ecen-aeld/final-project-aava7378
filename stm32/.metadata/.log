@@ -130,3 +130,38 @@ Command-line arguments:  -os win32 -ws win32 -arch x86_64
 
 !ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-08 11:51:11.960
 !MESSAGE Project is null
+!SESSION 2026-04-12 11:08:59.306 -----------------------------------------------
+eclipse.buildId=Version 1.19.0
+java.version=21.0.3
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=en_US
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2026-04-12 11:09:10.059
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2026-04-12 11:09:10.061
+!MESSAGE Log4j2 initialized with config file C:\Users\aaron\final-project-aava7378\stm32\.metadata\.log4j2.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2026-04-12 11:09:15.129
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-12 11:17:46.409
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-12 11:17:46.409
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-12 11:17:46.409
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-12 11:17:46.410
+!MESSAGE Project is null
+
+!ENTRY org.eclipse.core.resources 4 77 2026-04-12 11:17:46.631
+!MESSAGE Invalid project description.
+!SUBENTRY 1 unknown 0 0 2026-04-12 11:17:46.631
+!MESSAGE OK
+!SUBENTRY 1 org.eclipse.core.resources 4 77 2026-04-12 11:17:46.631
+!MESSAGE C:\Users\aaron\final-project-aava7378\stm32\telemetry_firmware overlaps the location of another project: 'telemetry_firmware'
+
+!ENTRY com.st.stm32cube.common.projectcreation 4 0 2026-04-12 11:17:46.632
+!MESSAGE Project is null
