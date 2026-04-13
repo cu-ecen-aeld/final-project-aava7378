@@ -1,0 +1,3 @@
+menu "Aaron final project packages"
+	source "$BR2_EXTERNAL_AARON_FP_PATH/package/receiver/Config.in"
+endmenu
